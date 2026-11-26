@@ -17,6 +17,7 @@ import { MODE_LOCKED, isMock, mode } from './lib/mode'
 import { createCalendarSession } from './lib/session'
 import { useEventChanges } from './lib/use-event-changes'
 import { diffEditableFields, type EditableDraft } from './lib/validate'
+import EventQuery from './components/EventQuery.vue'
 
 const EVENT_ID = 'demo-1'
 
@@ -146,6 +147,7 @@ function simulateRemote(): void {
 <template>
   <main class="page">
     <h1 class="page-title">日历 · 编辑日程</h1>
+    <EventQuery v-if="handshakeReady && isMock()" />
     <p class="page-note">{{ isMock() ? 'mock 演示：保存走假接口，撞车弹对比横幅。' : '真接口模式：数据读写走模块后端。' }}</p>
 
     <p v-if="handshakeError" class="msg err">{{ handshakeError }}</p>
