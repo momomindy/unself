@@ -2,6 +2,7 @@
 import type { CalendarEvent, EventChange, EventStatus } from '../../../src/types'
 
 import { isMock } from './mode'
+import type { EventQueryParams, EventQueryResult } from './query-api'
 
 /** 接口客户端：mock 走内存假数据，live 打模块后端，模式由 mode.ts 决定。 */
 
@@ -128,6 +129,15 @@ export async function fetchEvent(id: string): Promise<CalendarEvent> {
   if (!res.ok) throw new ApiError('加载日程失败', res.status)
   const body = (await res.json()) as { event: CalendarEvent }
   return body.event
+}
+
+export async function fetchEventOccurrences({ from, to, keyword }: EventQueryParams): Promise<EventQueryResult> {
+  const params = new URLSearchParams({ from: String(from), to: String(to) })
+  if (keyword) params.set('keyword', keyword)
+  const res = await fetch(`${API_BASE}/api/events?${params}`, { headers: authHeaders() })
+  if (res.status === 401) throw new AuthExpiredError()
+  if (!res.ok) throw new ApiError('查询日程失败', res.status)
+  return (await res.json()) as EventQueryResult
 }
 
 export async function patchEvent(id: string, patch: EventPatch): Promise<CalendarEvent> {
