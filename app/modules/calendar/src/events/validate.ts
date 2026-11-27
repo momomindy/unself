@@ -199,6 +199,15 @@ export function validatePatch(raw: unknown, base: EventRow): ValidateResult {
   return { ok: true, patch, columns, next, changedFields };
 }
 
+/** 删除请求只接受正整数版本号。 */
+export function validateDelete(raw: unknown): { ok: true; baseVersion: number } | { ok: false; error: string; field?: string } {
+  if (!isPlainObject(raw)) return { ok: false, error: 'body_must_be_object' };
+  for (const key of Object.keys(raw)) if (key !== 'baseVersion') return { ok: false, error: 'unknown_field', field: key };
+  if (!('baseVersion' in raw)) return { ok: false, error: 'baseVersion_required', field: 'baseVersion' };
+  if (!isInteger(raw.baseVersion) || raw.baseVersion < 1) return { ok: false, error: 'baseVersion_invalid', field: 'baseVersion' };
+  return { ok: true, baseVersion: raw.baseVersion };
+}
+
 /** API 值 → 列值（allDay 布尔转 0/1，其余原样）。 */
 function toColumnValue(field: keyof Omit<EventPatch, 'version'>, patch: EventPatch): string | number | null {
   if (field === 'allDay') {

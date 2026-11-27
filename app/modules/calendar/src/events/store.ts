@@ -34,6 +34,15 @@ export async function updateEventConditional(
   return result.meta.changes ?? 0;
 }
 
+/** 软删除仅接受当前版本，防止覆盖并发修改。 */
+export async function softDeleteEvent(db: D1Database, id: string, expectedVersion: number, deletedAt: number): Promise<number> {
+  const result = await db.prepare(
+    `UPDATE calendar_events SET deleted_at = ?, version = version + 1, updated_at = ?
+     WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+  ).bind(deletedAt, deletedAt, id, expectedVersion).run();
+  return result.meta.changes ?? 0;
+}
+
 /** 写一条变更记录（独立 INSERT，失败不回滚主表）。 */
 export async function insertChange(
   db: D1Database,

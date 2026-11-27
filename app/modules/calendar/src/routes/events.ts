@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Context } from 'hono';
 import { requireAuth, type AppEnv } from '../auth';
-import { findEvent, findLatestActorName, insertChange, updateEventConditional } from '../events/store';
-import { validatePatch } from '../events/validate';
+import { findEvent, findLatestActorName, insertChange, softDeleteEvent, updateEventConditional } from '../events/store';
+import { validateDelete, validatePatch } from '../events/validate';
 import { rowToEvent } from '../types';
 
 /** PATCH 顺序固定：验 token → 查记录（软删 404）→ 判组织者 → 校验 → 条件更新 → 写流水。先判组织者再校验，否则非组织者能从 400/409 的差别探出字段内容。 */
@@ -101,6 +101,35 @@ export async function patchEvent(c: Context<AppEnv>): Promise<Response> {  const
     ? rowToEvent(updated)
     : { ...result.next, version: before.version + 1, updatedAt: now };
   return c.json({ event, version: event.version });
+}
+
+/** 仅组织者可按版本软删除，变更流沿用修改接口的写入方式。 */
+export async function deleteEvent(c: Context<AppEnv>): Promise<Response> {
+  const blocked = await requireAuth(c);
+  if (blocked) return blocked;
+  const claims = c.get('claims');
+  const row = await findEvent(c.env.DB, c.req.param('id') ?? '');
+  if (!row || row.deleted_at !== null) return c.json({ error: 'not_found' }, 404);
+  if (row.organizer_id !== claims.sub) return c.json({ error: 'forbidden' }, 403);
+  let raw: unknown;
+  try { raw = await c.req.json(); } catch { return c.json({ error: 'body_must_be_json' }, 400); }
+  const result = validateDelete(raw);
+  if (!result.ok) return result.field === undefined ? c.json({ error: result.error }, 400) : c.json({ error: result.error, field: result.field }, 400);
+  const now = Date.now();
+  const changed = await softDeleteEvent(c.env.DB, row.id, result.baseVersion, now);
+  if (changed === 0) {
+    const latest = await findEvent(c.env.DB, row.id);
+    if (!latest || latest.deleted_at !== null) return c.json({ error: 'not_found' }, 404);
+    return await conflict(c, rowToEvent(latest));
+  }
+  try {
+    await insertChange(c.env.DB, { id: newChangeId(), eventId: row.id, actorId: claims.sub,
+      actorName: claims.name ?? claims.sub, fromVersion: row.version, toVersion: row.version + 1,
+      changedFields: ['deleted'] }, now);
+  } catch {
+    // 与 #384 一致：主表删除成功后，流水失败不会回滚。
+  }
+  return c.json({ ok: true, id: row.id, version: row.version + 1 });
 }
 
 /** 详情读接口：归模块自有，变更流只给 eventId，撞车对比要拿完整日程；软删一律 404，口径同 PATCH。 */
