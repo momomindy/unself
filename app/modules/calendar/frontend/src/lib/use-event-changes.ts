@@ -11,6 +11,7 @@ const pendingCount = ref(0)
 /** 每 3 秒拉变更流，游标推进、按 eventId 去重；切后台暂停切回补拉，自己产生的变更按版本过滤。 */
 export function useEventChanges(options: {
   eventId: string
+  enabled?: () => boolean
   getVersion: () => number
   onHit: (change: EventChange) => void
   onAuthExpired: () => void
@@ -20,6 +21,7 @@ export function useEventChanges(options: {
   let timer: ReturnType<typeof setInterval> | undefined
 
   async function poll(): Promise<void> {
+    if (options.enabled && !options.enabled()) return
     try {
       const { changes, cursor: next } = await fetchChanges(cursor.value)
       cursor.value = next
