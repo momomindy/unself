@@ -49,7 +49,7 @@ async function bootstrap(): Promise<void> {
       }
     }
     handshakeReady.value = true
-    await load()
+    if (isMock()) await load()
   } catch (err) {
     handshakeError.value = err instanceof Error ? err.message : String(err)
   }
@@ -74,6 +74,7 @@ function onRemoteChange(change: EventChange): void {
 
 const { pendingCount } = useEventChanges({
   eventId: EVENT_ID,
+  enabled: () => handshakeReady.value && isMock(),
   // 把当前表单的版本号交给轮询，用来过滤自己刚保存产生的变更
   getVersion: () => event.value?.version ?? 0,
   onHit: onRemoteChange,
@@ -146,9 +147,9 @@ function simulateRemote(): void {
 
 <template>
   <main class="page">
-    <h1 class="page-title">日历 · 编辑日程</h1>
-    <EventQuery v-if="handshakeReady && isMock()" />
-    <p class="page-note">{{ isMock() ? 'mock 演示：保存走假接口，撞车弹对比横幅。' : '真接口模式：数据读写走模块后端。' }}</p>
+    <h1 class="page-title">日历</h1>
+    <EventQuery v-if="handshakeReady" />
+    <p v-if="isMock()" class="page-note">mock 演示：保存走假接口，撞车弹对比横幅。</p>
 
     <p v-if="handshakeError" class="msg err">{{ handshakeError }}</p>
     <p v-if="!handshakeReady && !handshakeError" class="msg">正在连接平台…</p>

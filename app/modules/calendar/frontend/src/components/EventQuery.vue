@@ -3,6 +3,9 @@
 import { computed, onMounted, ref } from 'vue'
 import 'temporal-polyfill/global'
 import EventCalendar from './EventCalendar.vue'
+import type { CalendarEvent } from '../../../src/types'
+import { AuthExpiredError, fetchEvent, fetchEventOccurrences } from '../lib/api'
+import { isMock } from '../lib/mode'
 import { listMockEvents, type EventOccurrence, type EventQueryParams } from '../lib/query-api'
 import { fromZonedInput } from '../lib/time'
 
@@ -35,22 +38,46 @@ const occurrenceTime = new Intl.DateTimeFormat('zh-CN', {
 const visibleEvents = computed(() => status.value === 'ready' ? events.value : [])
 const events = ref<EventOccurrence[]>([])
 const selected = ref<EventOccurrence | null>(null)
-const status = ref<'loading' | 'ready' | 'failed' | 'invalid'>('loading')
+const detail = ref<CalendarEvent | null>(null)
+const detailStatus = ref<'loading' | 'ready' | 'failed' | 'expired'>('ready')
+const status = ref<'loading' | 'ready' | 'failed' | 'invalid' | 'expired'>('loading')
 let requestId = 0
+let detailRequestId = 0
 let lastQuery: EventQueryParams | undefined
+
+async function select(item: EventOccurrence): Promise<void> {
+  const id = ++detailRequestId
+  selected.value = item
+  detail.value = null
+  detailStatus.value = 'loading'
+  try {
+    const event = isMock() ? item.event : await fetchEvent(item.eventId)
+    if (id !== detailRequestId) return
+    detail.value = event
+    detailStatus.value = 'ready'
+  } catch (error) {
+    if (id === detailRequestId) detailStatus.value = error instanceof AuthExpiredError ? 'expired' : 'failed'
+  }
+}
+
+function clearSelection(): void {
+  ++detailRequestId
+  selected.value = null
+  detail.value = null
+}
 
 async function runQuery(params: EventQueryParams): Promise<void> {
   const id = ++requestId
   lastQuery = params
   status.value = 'loading'
-  selected.value = null
+  clearSelection()
   try {
-    const result = await listMockEvents(params)
+    const result = await (isMock() ? listMockEvents(params) : fetchEventOccurrences(params))
     if (id !== requestId) return
     events.value = result.events
     status.value = 'ready'
-  } catch {
-    if (id === requestId) status.value = 'failed'
+  } catch (error) {
+    if (id === requestId) status.value = error instanceof AuthExpiredError ? 'expired' : 'failed'
   }
 }
 
@@ -66,7 +93,7 @@ function queryList(): void {
   if (!Number.isFinite(from) || !Number.isFinite(endDay) || start.value > end.value) {
     ++requestId
     status.value = 'invalid'
-    selected.value = null
+    clearSelection()
     return
   }
   // Advance the calendar date before interpreting the next midnight in Shanghai.
@@ -141,6 +168,7 @@ onMounted(submit)
 
     <p v-if="status === 'loading'" role="status">正在查询日程…</p>
     <p v-else-if="status === 'invalid'" role="alert">请选择有效日期，结束日期须在开始日期当天或之后。</p>
+    <p v-else-if="status === 'expired'" role="alert">登录已过期，请重新登录。</p>
     <div v-else-if="status === 'failed'">
       <p role="alert">查询日程失败，请重试。</p>
       <button type="button" @click="retry">重试</button>
@@ -148,7 +176,7 @@ onMounted(submit)
     <p v-else-if="events.length === 0" role="status">没有符合条件的日程。</p>
     <ul v-if="visibleEvents.length" :class="{ 'narrow-list': view !== 'list' }">
       <li v-for="item in visibleEvents" :key="`${item.eventId}-${item.occurrenceStartAt}`">
-        <button type="button" @click="selected = item">
+        <button type="button" @click="select(item)">
           {{ item.event.title }} · {{ occurrenceTime.formatRange(item.occurrenceStartAt, item.occurrenceEndAt) }}
         </button>
       </li>
@@ -160,14 +188,22 @@ onMounted(submit)
       :date="anchor"
       :events="visibleEvents"
       :timezone="QUERY_ZONE"
-      @select="selected = $event"
+      @select="select"
     />
 
     <div v-if="selected">
-      <h3>{{ selected.event.title }}</h3>
-      <p>{{ occurrenceTime.formatRange(selected.occurrenceStartAt, selected.occurrenceEndAt) }}</p>
-      <p>{{ selected.event.description }}</p>
-      <p>地点：{{ selected.event.location }}</p>
+      <p v-if="detailStatus === 'loading'" role="status">正在加载日程详情…</p>
+      <p v-else-if="detailStatus === 'expired'" role="alert">登录已过期，请重新登录。</p>
+      <div v-else-if="detailStatus === 'failed'">
+        <p role="alert">加载日程详情失败。</p>
+        <button type="button" @click="select(selected)">重试详情</button>
+      </div>
+      <template v-else-if="detail">
+        <h3>{{ detail.title }}</h3>
+        <p>{{ occurrenceTime.formatRange(selected.occurrenceStartAt, selected.occurrenceEndAt) }}</p>
+        <p>{{ detail.description }}</p>
+        <p>地点：{{ detail.location }}</p>
+      </template>
     </div>
   </section>
 </template>
