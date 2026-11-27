@@ -150,7 +150,7 @@ onMounted(submit)
       <button type="button" :aria-pressed="view === 'week'" @click="changeView('week')">周视图</button>
       <button type="button" :aria-pressed="view === 'list'" @click="changeView('list')">日期范围列表</button>
     </div>
-    <div v-if="view !== 'list'" class="query-controls">
+    <div v-if="view !== 'list'" class="query-controls calendar-navigation">
       <button type="button" @click="navigate(-1)">{{ view === 'month' ? '上个月' : '上一周' }}</button>
       <span>{{ calendarWindow.first }} 至 {{ calendarWindow.next.subtract({ days: 1 }) }}</span>
       <button type="button" @click="navigate(1)">{{ view === 'month' ? '下个月' : '下一周' }}</button>
@@ -162,8 +162,10 @@ onMounted(submit)
         <p><label>结束日期 <input v-model="end" type="date" required /></label></p>
       </template>
       <p><label>标题关键词 <input v-model="keyword" type="search" /></label></p>
-      <button type="submit">查询</button>
-      <button type="button" @click="reset">重置</button>
+      <div class="query-actions">
+        <button type="submit">查询</button>
+        <button type="button" @click="reset">重置</button>
+      </div>
     </form>
 
     <p v-if="status === 'loading'" role="status">正在查询日程…</p>
@@ -231,7 +233,33 @@ button[aria-pressed="true"] {
   background: var(--unself-color-primary-soft);
 }
 
+.query-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--unself-space-2);
+  margin-block-end: var(--unself-space-4);
+}
+
+.narrow-list button {
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
 @media (min-width: 720px) {
   .narrow-list { display: none; }
+
+  .calendar-navigation {
+    gap: var(--unself-space-1);
+    margin-block: var(--unself-space-1);
+    font-size: var(--unself-font-size-sm);
+  }
+
+  .calendar-navigation button {
+    padding-inline: var(--unself-space-1);
+  }
+
+  .calendar-navigation span {
+    font-variant-numeric: tabular-nums;
+  }
 }
 </style>

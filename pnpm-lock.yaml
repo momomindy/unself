@@ -121,6 +121,9 @@ importers:
       '@schedule-x/events-service':
         specifier: ^4.9.2
         version: 4.9.2
+      '@schedule-x/scroll-controller':
+        specifier: 4.9.2
+        version: 4.9.2(@preact/signals@2.11.4(preact@10.29.8))
       '@schedule-x/theme-default':
         specifier: ^4.9.2
         version: 4.9.2
@@ -1341,6 +1344,11 @@ packages:
 
   '@schedule-x/events-service@4.9.2':
     resolution: {integrity: sha512-rYpSAHON9GpvQwamNsnZsaFC00nk5qrsncUdtLlK558DU/lVFZu7LpVQgWQwLlQNjgJ1Eu4jaReZnQwjKDFNzQ==}
+
+  '@schedule-x/scroll-controller@4.9.2':
+    resolution: {integrity: sha512-8Uk4Vpsj45Hr+hCgAkoABl6Rw4voA1lTyXR7bM46IMtLXkN6QTOEzzSFD2Fgtvsu4p2gWKFrpoqyEdnnEJpZmg==}
+    peerDependencies:
+      '@preact/signals': ^2.0.2
 
   '@schedule-x/theme-default@4.9.2':
     resolution: {integrity: sha512-upBgC+46I+kYoCgvENMfS7nV7XXdMpd7h5BuJ3l8jc3ycNQnCZBOlCUEAZEw6csQaxOUDSl2FmT9B2DeiIQk2A==}
@@ -3153,6 +3161,10 @@ snapshots:
       preact: 10.29.8
 
   '@schedule-x/events-service@4.9.2': {}
+
+  '@schedule-x/scroll-controller@4.9.2(@preact/signals@2.11.4(preact@10.29.8))':
+    dependencies:
+      '@preact/signals': 2.11.4(preact@10.29.8)
 
   '@schedule-x/theme-default@4.9.2': {}
 

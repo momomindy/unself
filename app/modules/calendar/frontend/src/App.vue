@@ -184,7 +184,19 @@ function simulateRemote(): void {
 </template>
 
 <style scoped>
-.page { max-width: 560px; margin: 40px auto; padding: 0 20px; font-family: var(--unself-font-family, system-ui); }
+.page {
+  --page-gutter: var(--unself-space-5);
+  inline-size: min(calc(100% - var(--page-gutter) * 2), calc(var(--unself-page-width) * 2));
+  margin: calc(var(--unself-space-5) * 2) auto;
+  font-family: var(--unself-font-family, system-ui);
+  text-align: left;
+}
+
+@media (min-width: 720px) {
+  :global(html) { scrollbar-gutter: stable both-edges; }
+  .page { --page-gutter: var(--unself-space-8); }
+}
+
 .page-title { font-size: var(--unself-font-size-xl, 20px); color: var(--unself-color-text, #1a1a1a); }
 .page-note { font-size: var(--unself-font-size-sm, 13px); color: var(--unself-color-text-secondary, #666); }
 .msg { font-size: var(--unself-font-size-sm, 13px); }

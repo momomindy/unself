@@ -4,6 +4,7 @@ import 'temporal-polyfill/global'
 import '@schedule-x/theme-default/dist/index.css'
 import { createCalendar, viewMonthGrid, viewWeek } from '@schedule-x/calendar'
 import { createEventsServicePlugin } from '@schedule-x/events-service'
+import { createScrollControllerPlugin } from '@schedule-x/scroll-controller'
 import { ScheduleXCalendar } from '@schedule-x/vue'
 import { watch } from 'vue'
 import type { EventOccurrence } from '../lib/query-api'
@@ -16,6 +17,9 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [occurrence: EventOccurrence] }>()
 const eventsService = createEventsServicePlugin()
+const plugins = props.view === 'week'
+  ? [eventsService, createScrollControllerPlugin({ initialScroll: '08:00' })]
+  : [eventsService]
 const occurrencesById = new Map<string, EventOccurrence>()
 const calendar = createCalendar({
   views: [props.view === 'month' ? viewMonthGrid : viewWeek],
@@ -25,6 +29,8 @@ const calendar = createCalendar({
   firstDayOfWeek: 1,
   isResponsive: false,
   skipAnimations: true,
+  // Compress the full-day grid uniformly so Schedule-X keeps labels and events aligned.
+  ...(props.view === 'week' ? { weekOptions: { gridHeight: 1200 } } : {}),
   calendars: {
     query: {
       colorName: 'query',
@@ -41,7 +47,7 @@ const calendar = createCalendar({
       if (occurrence) emit('select', occurrence)
     },
   },
-}, [eventsService])
+}, plugins)
 
 const zoned = (ms: number) => Temporal.Instant.fromEpochMilliseconds(ms)
   .toZonedDateTimeISO(props.timezone)
@@ -67,7 +73,7 @@ watch(() => props.events, occurrences => {
 </script>
 
 <template>
-  <div class="event-calendar">
+  <div class="event-calendar" :class="{ 'event-calendar--week': view === 'week' }">
     <ScheduleXCalendar :calendar-app="calendar" />
   </div>
 </template>
@@ -94,12 +100,53 @@ watch(() => props.events, occurrences => {
 .event-calendar :deep(.sx__calendar-wrapper) { border-radius: var(--unself-radius-lg); }
 .event-calendar :deep(.sx__event) { border-radius: var(--unself-radius-sm); }
 
+.event-calendar--week :deep(.sx__week-grid__date) {
+  padding-block: var(--unself-space-1);
+  gap: calc(var(--unself-space-1) / 2);
+}
+
+.event-calendar--week :deep(.sx__week-grid__date-number) {
+  font-size: var(--unself-font-size-base);
+  inline-size: var(--unself-space-5);
+  block-size: var(--unself-space-5);
+}
+
+.event-calendar--week :deep(.sx__time-grid-event),
+.event-calendar--week :deep(.sx__date-grid-event) {
+  padding-block: calc(var(--unself-space-1) / 2);
+  padding-inline: var(--unself-space-1);
+  font-size: var(--unself-font-size-2xs);
+  line-height: var(--unself-space-4);
+}
+
+.event-calendar--week :deep(.sx__time-grid-event-title) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-calendar--week :deep(.sx__title-and-time-compact) {
+  gap: var(--unself-space-1);
+}
+
+.event-calendar--week :deep(.sx__date-grid-cell) {
+  height: var(--unself-space-4);
+}
+
 @media (min-width: 720px) {
-  .event-calendar {
-    --calendar-width: min(calc(100vw - var(--unself-space-8) * 2), calc(var(--unself-page-width) * 2));
-    display: block;
-    width: var(--calendar-width);
-    margin-inline: calc((100% - var(--calendar-width)) / 2);
+  .event-calendar { display: block; }
+
+  .event-calendar--week {
+    block-size: min(var(--unself-page-height), 70dvh);
+  }
+
+  .event-calendar--week :deep(.sx-vue-calendar-wrapper) {
+    block-size: 100%;
+  }
+
+  .event-calendar--week :deep(.sx__view-container) {
+    overflow-anchor: none;
+    scroll-behavior: auto;
   }
 }
 </style>
