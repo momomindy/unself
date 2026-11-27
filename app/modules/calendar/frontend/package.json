@@ -13,6 +13,7 @@
   "dependencies": {
     "@schedule-x/calendar": "^4.9.2",
     "@schedule-x/events-service": "^4.9.2",
+    "@schedule-x/scroll-controller": "4.9.2",
     "@schedule-x/theme-default": "^4.9.2",
     "@schedule-x/vue": "^4.1.0",
     "@unself/sdk": "workspace:*",
