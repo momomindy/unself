@@ -27,6 +27,7 @@ export interface EventRow {
   organizer_id: string;
   response_state: string | null;
   rrule: string | null;
+  exdates: string;
   status: string;
   version: number;
   created_at: number;

@@ -15,6 +15,7 @@ await build({
   outfile: 'dist/worker.js',
   format: 'esm',
   platform: 'neutral',
+  mainFields: ['module', 'main'],
   target: 'es2022',
   legalComments: 'none',
   banner: { js: SPDX_BANNER },

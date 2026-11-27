@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@unself/sdk": "workspace:*",
-    "hono": "^4.10.0"
+    "hono": "^4.10.0",
+    "rrule": "^2.8.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
