@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script setup lang="ts">
+import ICalSubscription from './ICalSubscription.vue'
 import { computed, onMounted, ref } from 'vue'
 import 'temporal-polyfill/global'
 import EventCalendar from './EventCalendar.vue'
@@ -145,6 +146,7 @@ onMounted(submit)
 <template>
   <section aria-labelledby="event-query-heading">
     <h2 id="event-query-heading">日程查询</h2>
+    <ICalSubscription v-if="!isMock()" />
     <div class="query-controls" aria-label="日程视图">
       <button type="button" :aria-pressed="view === 'month'" @click="changeView('month')">月视图</button>
       <button type="button" :aria-pressed="view === 'week'" @click="changeView('week')">周视图</button>
