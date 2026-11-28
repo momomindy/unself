@@ -86,6 +86,7 @@ function loadMock(): void {
     organizerId: 'u1',
     responseState: 'accepted',
     rrule: null,
+    exdates: [],
     status: 'confirmed',
     version: 3,
     createdAt: Date.now(),

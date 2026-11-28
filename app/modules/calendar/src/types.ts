@@ -61,6 +61,8 @@ export interface CalendarEvent {
   organizerId: string;
   responseState: ResponseState | null;
   rrule: string | null;
+  /** 排除的发生时间，UTC 毫秒。 */
+  exdates: number[];
   status: EventStatus;
   version: number;
   createdAt: number;
@@ -100,6 +102,7 @@ export const READONLY_FIELDS = [
   'id',
   'uid',
   'organizerId',
+  'exdates',
   'createdAt',
   'updatedAt',
   'deletedAt',
@@ -133,6 +136,7 @@ export function rowToEvent(row: EventRow): CalendarEvent {
     organizerId: row.organizer_id,
     responseState: (row.response_state as ResponseState | null) ?? null,
     rrule: row.rrule,
+    exdates: JSON.parse(row.exdates) as number[],
     status: row.status as EventStatus,
     version: row.version,
     createdAt: row.created_at,

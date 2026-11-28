@@ -1,0 +1,10 @@
+Third-party components bundled with the calendar Worker:
+
+ical.js 2.2.1 — Copyright Philipp Kewisch and contributors.
+Mozilla Public License 2.0. Source: https://github.com/kewisch/ical.js
+The license text is included as ical.js-LICENSE.
+
+timezones-ical-library 3.0.0 — Copyright Jens Kuerschner (Calendarverse GmbH).
+Apache License 2.0. Source: https://github.com/add2cal/timezones-ical-library
+The license text is included as timezones-ical-library-LICENSE.
+The included timezone data reports IANA tzdata version 2026f.
