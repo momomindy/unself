@@ -5,14 +5,15 @@ import { computed, onMounted, ref } from 'vue'
 import 'temporal-polyfill/global'
 import EventCalendar from './EventCalendar.vue'
 import type { CalendarEvent } from '../../../src/types'
-import { AuthExpiredError, fetchEvent, fetchEventOccurrences } from '../lib/api'
+import { ApiError, AuthExpiredError, fetchEvent, fetchEventOccurrences } from '../lib/api'
 import { isMock } from '../lib/mode'
 import { listMockEvents, type EventOccurrence, type EventQueryParams } from '../lib/query-api'
 import { fromZonedInput } from '../lib/time'
 
 const QUERY_ZONE = 'Asia/Shanghai'
-const DEFAULT_START = '2026-11-20'
-const DEFAULT_END = '2026-11-21'
+const today = () => Temporal.Now.plainDateISO(QUERY_ZONE)
+const DEFAULT_START = today().toString()
+const DEFAULT_END = DEFAULT_START
 const start = ref(DEFAULT_START)
 const end = ref(DEFAULT_END)
 const keyword = ref('')
@@ -36,12 +37,21 @@ const calendarWindow = computed(() => {
 const occurrenceTime = new Intl.DateTimeFormat('zh-CN', {
   timeZone: QUERY_ZONE, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
 })
+function formatOccurrence(item: EventOccurrence): string {
+  if (!item.event.allDay) return occurrenceTime.formatRange(item.occurrenceStartAt, item.occurrenceEndAt)
+  const date = (ms: number) => Temporal.Instant.fromEpochMilliseconds(ms)
+    .toZonedDateTimeISO(item.event.timezone).toPlainDate().toString()
+  const first = date(item.occurrenceStartAt)
+  const last = date(item.occurrenceEndAt - 1)
+  return `${first === last ? first : `${first} 至 ${last}`} 全天（${item.event.timezone}）`
+}
 const visibleEvents = computed(() => status.value === 'ready' ? events.value : [])
 const events = ref<EventOccurrence[]>([])
 const selected = ref<EventOccurrence | null>(null)
 const detail = ref<CalendarEvent | null>(null)
 const detailStatus = ref<'loading' | 'ready' | 'failed' | 'expired'>('ready')
 const status = ref<'loading' | 'ready' | 'failed' | 'invalid' | 'expired'>('loading')
+const queryError = ref('查询日程失败，请重试。')
 let requestId = 0
 let detailRequestId = 0
 let lastQuery: EventQueryParams | undefined
@@ -78,7 +88,10 @@ async function runQuery(params: EventQueryParams): Promise<void> {
     events.value = result.events
     status.value = 'ready'
   } catch (error) {
-    if (id === requestId) status.value = error instanceof AuthExpiredError ? 'expired' : 'failed'
+    if (id === requestId) {
+      queryError.value = error instanceof ApiError ? error.message : '查询日程失败，请重试。'
+      status.value = error instanceof AuthExpiredError ? 'expired' : 'failed'
+    }
   }
 }
 
@@ -129,10 +142,10 @@ function navigate(direction: number): void {
 }
 
 function reset(): void {
-  start.value = DEFAULT_START
-  end.value = DEFAULT_END
+  start.value = today().toString()
+  end.value = start.value
   keyword.value = ''
-  anchor.value = Temporal.PlainDate.from(DEFAULT_START)
+  anchor.value = today()
   submit()
 }
 
@@ -174,14 +187,14 @@ onMounted(submit)
     <p v-else-if="status === 'invalid'" role="alert">请选择有效日期，结束日期须在开始日期当天或之后。</p>
     <p v-else-if="status === 'expired'" role="alert">登录已过期，请重新登录。</p>
     <div v-else-if="status === 'failed'">
-      <p role="alert">查询日程失败，请重试。</p>
+      <p role="alert">{{ queryError }}</p>
       <button type="button" @click="retry">重试</button>
     </div>
     <p v-else-if="events.length === 0" role="status">没有符合条件的日程。</p>
     <ul v-if="visibleEvents.length" :class="{ 'narrow-list': view !== 'list' }">
       <li v-for="item in visibleEvents" :key="`${item.eventId}-${item.occurrenceStartAt}`">
         <button type="button" @click="select(item)">
-          {{ item.event.title }} · {{ occurrenceTime.formatRange(item.occurrenceStartAt, item.occurrenceEndAt) }}
+          {{ item.event.title }} · {{ formatOccurrence(item) }}
         </button>
       </li>
     </ul>
@@ -204,7 +217,7 @@ onMounted(submit)
       </div>
       <template v-else-if="detail">
         <h3>{{ detail.title }}</h3>
-        <p>{{ occurrenceTime.formatRange(selected.occurrenceStartAt, selected.occurrenceEndAt) }}</p>
+        <p>{{ formatOccurrence(selected) }}</p>
         <p>{{ detail.description }}</p>
         <p>地点：{{ detail.location }}</p>
       </template>
@@ -247,7 +260,7 @@ button[aria-pressed="true"] {
   overflow-wrap: anywhere;
 }
 
-@media (min-width: 720px) {
+@media (min-width: 600px) {
   .narrow-list { display: none; }
 
   .calendar-navigation {

@@ -29,8 +29,6 @@ const calendar = createCalendar({
   firstDayOfWeek: 1,
   isResponsive: false,
   skipAnimations: true,
-  // Compress the full-day grid uniformly so Schedule-X keeps labels and events aligned.
-  ...(props.view === 'week' ? { weekOptions: { gridHeight: 1200 } } : {}),
   calendars: {
     query: {
       colorName: 'query',
@@ -51,6 +49,8 @@ const calendar = createCalendar({
 
 const zoned = (ms: number) => Temporal.Instant.fromEpochMilliseconds(ms)
   .toZonedDateTimeISO(props.timezone)
+const eventDate = (ms: number, timezone: string) => Temporal.Instant.fromEpochMilliseconds(ms)
+  .toZonedDateTimeISO(timezone).toPlainDate()
 
 watch(() => props.events, occurrences => {
   occurrencesById.clear()
@@ -62,10 +62,10 @@ watch(() => props.events, occurrences => {
       id,
       calendarId: 'query',
       title: item.event.title,
-      start: item.event.allDay ? start.toPlainDate() : start,
+      start: item.event.allDay ? eventDate(item.occurrenceStartAt, item.event.timezone) : start,
       // Schedule-X's all-day end date is inclusive.
       end: item.event.allDay
-        ? zoned(item.occurrenceEndAt - 1).toPlainDate()
+        ? eventDate(item.occurrenceEndAt - 1, item.event.timezone)
         : zoned(item.occurrenceEndAt),
     }
   }))
@@ -100,40 +100,7 @@ watch(() => props.events, occurrences => {
 .event-calendar :deep(.sx__calendar-wrapper) { border-radius: var(--unself-radius-lg); }
 .event-calendar :deep(.sx__event) { border-radius: var(--unself-radius-sm); }
 
-.event-calendar--week :deep(.sx__week-grid__date) {
-  padding-block: var(--unself-space-1);
-  gap: calc(var(--unself-space-1) / 2);
-}
-
-.event-calendar--week :deep(.sx__week-grid__date-number) {
-  font-size: var(--unself-font-size-base);
-  inline-size: var(--unself-space-5);
-  block-size: var(--unself-space-5);
-}
-
-.event-calendar--week :deep(.sx__time-grid-event),
-.event-calendar--week :deep(.sx__date-grid-event) {
-  padding-block: calc(var(--unself-space-1) / 2);
-  padding-inline: var(--unself-space-1);
-  font-size: var(--unself-font-size-2xs);
-  line-height: var(--unself-space-4);
-}
-
-.event-calendar--week :deep(.sx__time-grid-event-title) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.event-calendar--week :deep(.sx__title-and-time-compact) {
-  gap: var(--unself-space-1);
-}
-
-.event-calendar--week :deep(.sx__date-grid-cell) {
-  height: var(--unself-space-4);
-}
-
-@media (min-width: 720px) {
+@media (min-width: 600px) {
   .event-calendar { display: block; }
 
   .event-calendar--week {
@@ -144,9 +111,5 @@ watch(() => props.events, occurrences => {
     block-size: 100%;
   }
 
-  .event-calendar--week :deep(.sx__view-container) {
-    overflow-anchor: none;
-    scroll-behavior: auto;
-  }
 }
 </style>

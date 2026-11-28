@@ -142,6 +142,10 @@ export async function fetchEventOccurrences({ from, to, keyword }: EventQueryPar
   if (keyword) params.set('keyword', keyword)
   const res = await fetch(`${API_BASE}/api/events?${params}`, { headers: authHeaders() })
   if (res.status === 401) throw new AuthExpiredError()
+  if (res.status === 400) {
+    const body = await res.json().catch(() => null) as { error?: string } | null
+    if (body?.error === 'too_many_events') throw new ApiError('日程超过 500 条，请缩小查询范围。', res.status)
+  }
   if (!res.ok) throw new ApiError('查询日程失败', res.status)
   return (await res.json()) as EventQueryResult
 }

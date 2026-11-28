@@ -30,7 +30,7 @@ function localToUtc(clock: number, timezone: string): number {
 /** 所有日程共用同一个窗口、关键词与软删除规则。 */
 export async function queryEvents(db: D1Database, from: number, to: number, keyword: string): Promise<EventOccurrence[]> {
   const rows = await db.prepare(`SELECT * FROM calendar_events
-    WHERE deleted_at IS NULL AND start_at < ?
+    WHERE deleted_at IS NULL AND status != 'cancelled' AND start_at < ?
       AND (rrule IS NOT NULL OR end_at > ?)
       AND instr(title, ?) > 0`).bind(to, from, keyword).all<EventRow>();
   const occurrences: EventOccurrence[] = [];

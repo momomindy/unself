@@ -1,6 +1,6 @@
 # calendar 模块
 
-日历模块，本期做「编辑日程」：读取一条日程、按版本号乐观锁改字段、通过变更流提示他人改动。
+日历模块支持日程窗口查询、详情、重复事件展开和 iCal 订阅；共同基础还包含日程编辑功能。
 
 ## 目录
 
@@ -14,6 +14,8 @@
 
 - `PATCH /api/events/:id`：改字段，必带 `version`；200 回 `{ event, version }`，409 回 `{ error: version_conflict, event, version, actorName }`
 - `GET /api/events/:id`：读详情，软删一律 404。归模块自有：变更流只给 eventId，撞车对比必须靠它取完整日程；后续查组若有详情接口再统一口径。
+- `GET /api/events?from=&to=`：按 UTC 毫秒窗口查询并展开重复事件，最多 500 条。
+- `POST /api/feed-token`、`DELETE /api/feed-token`：生成和撤销订阅链接；`GET /feed/:token.ics` 输出日历。
 - `GET /api/changes?since=`：变更流，`since` 含当毫秒，cursor 只前进，单次上限 200
 - `GET /api/health`、`GET /life/export`、`POST /life/purge`：平台约定接口
 
@@ -48,6 +50,10 @@ pnpm --filter @unself/calendar-frontend dev
 ```
 
 ```bash
+../../modules/chat/node_modules/.bin/wrangler d1 execute DB --local --persist-to .wrangler/query-demo --file migrations/calendar/0003_feed_tokens.sql --yes
+```
+
+```bash
 ../../modules/chat/node_modules/.bin/wrangler d1 execute DB --local --persist-to .wrangler/query-demo --file scripts/query-sample.sql --yes
 ```
 
@@ -71,9 +77,9 @@ node frontend/scripts/dev-token.mjs
 VITE_USE_MOCK=false pnpm --filter @unself/calendar-frontend dev
 ```
 
-前端 Vite 默认将 `/api` 代理到同一台电脑的 8787 端口；通过开发身份脚本打印的假壳地址打开页面。查询页面的真实接口接线尚待与前端分支整合；前端目前仅在 mock 模式显示查询页面。已有编辑器固定读取 `demo-1`，样例没有这条记录。
+前端 Vite 默认将 `/api` 和 `/feed/` 代理到同一台电脑的 8787 端口；通过开发身份脚本打印的假壳地址打开页面。
 
-查询样例可使用 `GET /api/events?from=1795622400000&to=1795708800000`（上海时间 2026-11-26）。登录后应查到跨天值班、全天培训、取消的会议和项目会议，已删除日程不出现。重复规则展开与例外日期按当前实现提供；iCal 订阅尚未实现。
+查询样例可使用 `GET /api/events?from=1795622400000&to=1795708800000`（上海时间 2026-11-26）。登录后应查到跨天值班、全天培训和项目会议；已取消及已删除的日程不出现在窗口查询中。
 
 PATCH 只允许改自己的日程：行上 `organizer_id` 必须等于 token 的 `sub`，否则 403。
 
