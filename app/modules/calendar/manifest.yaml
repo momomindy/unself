@@ -16,3 +16,4 @@ storage:
 tables:
   - calendar_events
   - calendar_event_changes
+  - calendar_feed_tokens

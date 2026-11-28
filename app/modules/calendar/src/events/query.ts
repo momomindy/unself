@@ -57,20 +57,25 @@ export async function queryEvents(db: D1Database, from: number, to: number, keyw
       // RRULE 只计算本地钟面，避免其 TZID 实现依赖运行机器的时区。
       // UNTIL 是 UTC 时刻，在转换回真实时刻后再判断。
       const until = options.until?.getTime();
-      const rule = new RRule({ ...options, until: undefined, dtstart: new Date(startClock) });
-      let count = 0;
+      // COUNT 按有效发生次数计数；跳过不存在的当地时间时不能消耗次数。
+      const rule = new RRule({ ...options, count: undefined, until: undefined, dtstart: new Date(startClock) });
+      let candidates = 0;
+      let validCount = 0;
       // 全天事件跨夏令时时实际长度会变化，多留两天以覆盖窗口左边界。
       const lookback = row.all_day ? Math.max(duration, localDuration) + 172800000 : duration;
       const margin = 172800000;
-      rule.between(new Date(Math.max(-8640000000000000, from - lookback - margin)), new Date(Math.min(8640000000000000, to + margin)), true, (date) => {
-        if (++count > 100000) throw new QueryError('recurrence_too_complex');
+      const windowStart = options.count == null ? from - lookback - margin : startClock;
+      rule.between(new Date(Math.max(-8640000000000000, windowStart)), new Date(Math.min(8640000000000000, to + margin)), true, (date) => {
+        if (++candidates > 100000) throw new QueryError('recurrence_too_complex');
         const start = localToUtc(date.getTime(), row.timezone);
+        if (localClock(start, row.timezone) !== date.getTime()) return true;
         if (until !== undefined && start > until) return false;
+        validCount++;
         if (!excluded.includes(start)) {
           const end = row.all_day ? localToUtc(localClock(start, row.timezone) + localDuration, row.timezone) : start + duration;
           append(start, end);
         }
-        return true;
+        return options.count == null || validCount < options.count;
       });
     } catch (error) {
       if (error instanceof QueryError) throw error;

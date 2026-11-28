@@ -4,6 +4,8 @@ import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { cpSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const SPDX_BANNER = '// SPDX-License-Identifier: AGPL-3.0-only';
 const HERE = fileURLToPath(new URL('..', import.meta.url));
@@ -17,10 +19,13 @@ await build({
   platform: 'neutral',
   mainFields: ['module', 'main'],
   target: 'es2022',
-  legalComments: 'none',
+  legalComments: 'eof',
   banner: { js: SPDX_BANNER },
   logLevel: 'warning',
 });
+
+mkdirSync(join(HERE, 'dist', 'licenses'), { recursive: true });
+cpSync(join(HERE, 'licenses'), join(HERE, 'dist', 'licenses'), { recursive: true });
 
 console.log('▣ calendar 产物就绪：dist/worker.js（CF 装配入口）');
 

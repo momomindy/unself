@@ -5,6 +5,7 @@ import { exportData, purgeData } from './life';
 import { listChanges } from './routes/changes';
 import { listEvents } from './routes/event-query';
 import { getEvent, patchEvent } from './routes/events';
+import { createFeedToken, deleteFeedToken, getFeed } from './routes/feed';
 
 /** 模块入口：只挂载路由与生命周期端点，业务实现放各自文件，避免多人改同一处。 */
 
@@ -25,6 +26,9 @@ app.get('/api/events/changes', listChanges);
 app.get('/api/events', listEvents);
 app.get('/api/events/:id', getEvent);
 app.patch('/api/events/:id', patchEvent);
+app.post('/api/feed-token', createFeedToken);
+app.delete('/api/feed-token', deleteFeedToken);
+app.get('/feed/:filename', getFeed);
 
 app.get('/life/export', exportData);
 app.post('/life/purge', purgeData);
