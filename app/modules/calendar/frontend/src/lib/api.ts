@@ -6,8 +6,14 @@ import type { EventQueryParams, EventQueryResult } from './query-api'
 
 /** 接口客户端：mock 走内存假数据，live 打模块后端，模式由 mode.ts 决定。 */
 
-/** 真接口前缀：默认空串表示跟当前页面同源，/m/calendar 前缀由宿主剥掉。 */
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+/** 模块入口可以挂在子路径，开发代理则挂在站点根目录。 */
+const entry = new URL(window.location.href)
+const modulePath = entry.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '')
+const moduleRoot = new URL(`${modulePath}/`, entry.origin)
+const configuredBase = import.meta.env.VITE_API_BASE?.trim()
+const API_BASE = configuredBase
+  ? new URL(configuredBase.replace(/\/+$/, '') + '/', moduleRoot).href.replace(/\/$/, '')
+  : moduleRoot.href.replace(/\/$/, '')
 
 /** token 提供者：握手完成后由 App 注入，真接口请求时拼 Bearer。mock 模式下不使用。 */
 let getToken: (() => string | null) | null = null
@@ -137,6 +143,25 @@ export async function fetchEventOccurrences({ from, to, keyword }: EventQueryPar
   if (res.status === 401) throw new AuthExpiredError()
   if (!res.ok) throw new ApiError('查询日程失败', res.status)
   return (await res.json()) as EventQueryResult
+}
+
+async function requestFeedToken(method: 'POST' | 'DELETE'): Promise<Response> {
+  const res = await fetch(`${API_BASE}/api/feed-token`, { method, headers: authHeaders() })
+  if (res.status === 401) throw new AuthExpiredError()
+  if (!res.ok) throw new ApiError('iCal 订阅操作失败', res.status)
+  return res
+}
+
+export async function generateFeedUrl(): Promise<string> {
+  const { feedPath } = await (await requestFeedToken('POST')).json() as { feedPath?: string }
+  if (!feedPath || !/^feed\/[a-f0-9]{64}\.ics$/.test(feedPath)) {
+    throw new Error('订阅路径无效')
+  }
+  return new URL(feedPath, `${API_BASE}/`).href
+}
+
+export async function revokeFeedUrl(): Promise<void> {
+  await requestFeedToken('DELETE')
 }
 
 export async function patchEvent(id: string, patch: EventPatch): Promise<CalendarEvent> {
